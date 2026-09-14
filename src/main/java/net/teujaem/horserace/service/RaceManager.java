@@ -74,7 +74,7 @@ public final class RaceManager {
 
         Horse horse = horses.get(horseIndex);
         Bet bet = new Bet(horseIndex, amount, horse.odds());
-        Race race = new Race(horses, bet, plugin.getTrackLength(), plugin.getOddsPower());
+        Race race = new Race(horses, bet, plugin.getTrackLength(), plugin.getMovePower(), plugin.getMoveStep());
         RaceGui gui = new RaceGui(plugin, player, race);
         BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> tick(player),
                 plugin.getTickInterval(), plugin.getTickInterval());

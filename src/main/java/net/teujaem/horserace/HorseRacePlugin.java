@@ -39,8 +39,12 @@ public final class HorseRacePlugin extends JavaPlugin {
     private String prefix = "&6[경마] &f";
     private List<Integer> betAmounts = new ArrayList<>();
     private List<Horse> horses = new ArrayList<>();
-    private double oddsPower = 2.0;
-    private long tickInterval = 8;
+    private double movePower = 0.5;
+    private double moveStep = 0.16;
+    private int estimateSamples = 5000;
+    /** 말 순서와 같은 인덱스의 추정 승률(0~1). 설정/배당이 바뀔 때 다시 계산. */
+    private double[] winChances = new double[0];
+    private long tickInterval = 32;
     private double trackLength = 100;
 
     /** 오프라인 중 적중/환불된 금액. 접속 시 지급. pending.yml 에 저장. */
@@ -63,7 +67,7 @@ public final class HorseRacePlugin extends JavaPlugin {
         }
 
         getLogger().info("경마 활성화 완료. 재화: " + Text.strip(currency.display())
-                + ", 말: " + horses.size() + "마리, 배당 지수: " + oddsPower);
+                + ", 말: " + horses.size() + "마리, 이동 확률 지수: " + movePower + ", 이동 거리: " + moveStep);
     }
 
     @Override
@@ -106,8 +110,10 @@ public final class HorseRacePlugin extends JavaPlugin {
         }
 
         // 경기 규칙
-        this.oddsPower = Math.max(0.1, Math.min(10.0, getConfig().getDouble("race.odds-power", 2.0)));
-        this.tickInterval = Math.max(1, getConfig().getInt("race.tick-interval-ticks", 8));
+        this.movePower = Math.max(0.1, Math.min(10.0, getConfig().getDouble("race.move-chance-power", 0.5)));
+        this.moveStep = Math.max(0.01, Math.min(1.0, getConfig().getDouble("race.move-step", 0.16)));
+        this.estimateSamples = Math.max(500, Math.min(100000, getConfig().getInt("race.estimate-samples", 5000)));
+        this.tickInterval = Math.max(1, getConfig().getInt("race.tick-interval-ticks", 32));
         this.trackLength = Math.max(10, getConfig().getDouble("race.track-length", 100));
 
         // 말 목록
@@ -141,6 +147,12 @@ public final class HorseRacePlugin extends JavaPlugin {
                     new Horse("청해", "&b", Material.LIGHT_BLUE_WOOL, 2.0)));
         }
         this.horses = loaded;
+        recomputeWinChances();
+    }
+
+    /** 현재 말 목록과 규칙으로 승률을 시뮬레이션해 캐시한다. */
+    private void recomputeWinChances() {
+        this.winChances = Race.estimateWinChances(horses, trackLength, movePower, moveStep, estimateSamples);
     }
 
     private ItemCurrency buildItemCurrency(String display) {
@@ -208,6 +220,7 @@ public final class HorseRacePlugin extends JavaPlugin {
         }
         getConfig().set("horses", serialized);
         saveConfig();
+        recomputeWinChances();
     }
 
     // ---- 보류 지급 (pending.yml) ----
@@ -274,17 +287,26 @@ public final class HorseRacePlugin extends JavaPlugin {
         return horses;
     }
 
-    public double getOddsPower() {
-        return oddsPower;
+    public double getMovePower() {
+        return movePower;
     }
 
-    /** 표시용 승률(0~1): 전체 말 중 이 말이 우승하는 비율. 전부 더하면 1. */
+    public double getMoveStep() {
+        return moveStep;
+    }
+
+    /** 표시용 승률(0~1): 시뮬레이션으로 추정한 전체 말 중 이 말의 우승 비율. 전부 더하면 1. */
     public double winChance(Horse h) {
         int index = horses.indexOf(h);
-        if (index < 0) {
+        if (index < 0 || index >= winChances.length) {
             return 0;
         }
-        return Race.winChance(horses, index, oddsPower);
+        return winChances[index];
+    }
+
+    /** 이 말이 한 틱에 움직일 확률(0~1). */
+    public double moveChance(Horse h) {
+        return Race.moveChance(h, movePower);
     }
 
     /** 표시용 승률(%). */

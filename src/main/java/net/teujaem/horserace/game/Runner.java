@@ -5,14 +5,13 @@ public final class Runner {
 
     private final int index;          // 출전 번호 (0부터) = config 순서
     private final Horse horse;
-    private final double speed;       // 이번 경기 속도 계수 (연출용)
     private double progress;          // 0 ~ trackLength
     private int finishOrder = -1;     // 결승 통과 순위 (0 = 1등). 미통과면 -1
+    private boolean movedLastTick;    // 직전 틱에 움직였는지 (연출용)
 
-    public Runner(int index, Horse horse, double speed) {
+    public Runner(int index, Horse horse) {
         this.index = index;
         this.horse = horse;
-        this.speed = speed;
     }
 
     public int index() {
@@ -21,10 +20,6 @@ public final class Runner {
 
     public Horse horse() {
         return horse;
-    }
-
-    public double speed() {
-        return speed;
     }
 
     public double progress() {
@@ -49,5 +44,13 @@ public final class Runner {
 
     public void setFinishOrder(int order) {
         this.finishOrder = order;
+    }
+
+    public boolean movedLastTick() {
+        return movedLastTick;
+    }
+
+    public void setMovedLastTick(boolean moved) {
+        this.movedLastTick = moved;
     }
 }

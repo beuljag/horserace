@@ -124,7 +124,7 @@ public final class HorseRaceCommand implements CommandExecutor, TabCompleter {
         for (int i = 0; i < horses.size(); i++) {
             Horse h = horses.get(i);
             String line = "&f" + (i + 1) + "번 " + h.coloredName() + " &7배당 &e" + h.oddsText()
-                    + " &7/ 승률 약 " + plugin.winChancePercent(h) + "%";
+                    + " &7/ 승률 약 " + plugin.winChancePercent(h) + "% / 이동 " + (int) Math.round(plugin.moveChance(h) * 100) + "%";
             if (sender.hasPermission("horserace.admin")) {
                 line += " &8(공정 배당 " + String.format("%.1f", plugin.fairOdds(h)) + "배)";
             }

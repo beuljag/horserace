@@ -2,8 +2,8 @@
 
 ![Minecraft](https://img.shields.io/badge/Minecraft-Paper%2026.1.x-brightgreen)
 ![Java](https://img.shields.io/badge/Java-25%2B-orange)
-[![Release](https://img.shields.io/github/v/release/beuljag/horserace)](https://github.com/beuljag/horserace/releases/latest)
-[![License](https://img.shields.io/github/license/beuljag/horserace)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/beuljag/minecraft-horserace-plugin)](https://github.com/beuljag/minecraft-horserace-plugin/releases/latest)
+[![License](https://img.shields.io/github/license/beuljag/minecraft-horserace-plugin)](LICENSE)
 
 1인용 마인크래프트 경마 도박 플러그인.
 **말을 고르고 금액을 누르면 대기 시간 없이 바로 레이스가 시작된다.**

@@ -63,6 +63,18 @@ public final class HorseRaceCommand implements CommandExecutor, TabCompleter {
 
             case "horses", "list", "말" -> listHorses(sender);
 
+            case "stats", "통계" -> {
+                if (args.length >= 2 && args[1].equalsIgnoreCase("reset")) {
+                    if (!admin(sender)) {
+                        return true;
+                    }
+                    plugin.resetStats();
+                    plugin.message(sender, "&a실제 승률 통계를 초기화했습니다. 다시 예상값을 표시합니다.");
+                    return true;
+                }
+                stats(sender);
+            }
+
             // ---- 관리자 ----
             case "odds", "배당" -> {
                 if (!admin(sender)) {
@@ -120,7 +132,10 @@ public final class HorseRaceCommand implements CommandExecutor, TabCompleter {
 
     private void listHorses(CommandSender sender) {
         List<Horse> horses = plugin.getHorses();
-        plugin.message(sender, "&6말 목록");
+        String basis = plugin.usingRealStats()
+                ? "실제 " + plugin.statsTotalRaces() + "경기 기준"
+                : "예상값, 실제 " + plugin.statsTotalRaces() + "/" + plugin.statsMinRaces() + "경기";
+        plugin.message(sender, "&6말 목록 &7(승률: " + basis + ")");
         for (int i = 0; i < horses.size(); i++) {
             Horse h = horses.get(i);
             String line = "&f" + (i + 1) + "번 " + h.coloredName() + " &7배당 &e" + h.oddsText()
@@ -129,6 +144,23 @@ public final class HorseRaceCommand implements CommandExecutor, TabCompleter {
                 line += " &8(공정 배당 " + String.format("%.1f", plugin.fairOdds(h)) + "배)";
             }
             plugin.message(sender, line);
+        }
+    }
+
+    private void stats(CommandSender sender) {
+        int total = plugin.statsTotalRaces();
+        plugin.message(sender, "&6실제 경기 통계 &7(총 " + total + "경기"
+                + (plugin.usingRealStats() ? ", 승률에 반영 중" : ", " + plugin.statsMinRaces() + "경기부터 승률에 반영") + ")");
+        List<Horse> horses = plugin.getHorses();
+        for (int i = 0; i < horses.size(); i++) {
+            Horse h = horses.get(i);
+            int wins = plugin.statsWins(h);
+            String real = total > 0 ? String.format("%.1f", wins * 100.0 / total) + "%" : "-";
+            plugin.message(sender, "&f" + (i + 1) + "번 " + h.coloredName() + " &7우승 " + wins + "회 &f" + real
+                    + " &8(예상 " + Math.round(plugin.estimatedWinChance(h) * 100) + "%)");
+        }
+        if (sender.hasPermission("horserace.admin")) {
+            plugin.message(sender, "&7/hr stats reset 으로 초기화. 배당이나 규칙을 바꾸면 자동 초기화됩니다.");
         }
     }
 
@@ -227,10 +259,12 @@ public final class HorseRaceCommand implements CommandExecutor, TabCompleter {
         plugin.message(sender, "&6/hr &7- 말 선택 화면 (경기 중이면 경기장)");
         plugin.message(sender, "&6/hr bet <말번호> <금액> &7- 명령으로 바로 베팅+출발");
         plugin.message(sender, "&6/hr horses &7- 말 목록과 배당");
+        plugin.message(sender, "&6/hr stats &7- 실제 경기 통계");
         if (sender.hasPermission("horserace.admin")) {
             plugin.message(sender, "&c/hr odds <번호> <배당> &7- 말 배당 변경");
             plugin.message(sender, "&c/hr horse add|remove &7- 말 추가/삭제");
             plugin.message(sender, "&c/hr amounts &7- 판돈 목록 편집");
+            plugin.message(sender, "&c/hr stats reset &7- 실제 승률 통계 초기화");
             plugin.message(sender, "&c/hr reload &7- 설정 리로드");
         }
     }
@@ -277,7 +311,7 @@ public final class HorseRaceCommand implements CommandExecutor, TabCompleter {
         List<String> out = new ArrayList<>();
         boolean admin = sender.hasPermission("horserace.admin");
         if (args.length == 1) {
-            List<String> subs = new ArrayList<>(List.of("bet", "horses", "help"));
+            List<String> subs = new ArrayList<>(List.of("bet", "horses", "stats", "help"));
             if (admin) {
                 subs.addAll(List.of("odds", "horse", "amounts", "reload"));
             }
@@ -298,6 +332,8 @@ public final class HorseRaceCommand implements CommandExecutor, TabCompleter {
             out.addAll(List.of("1.1", "1.3", "1.5", "1.7", "2.0"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("horse")) {
             out.addAll(List.of("add", "remove"));
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("stats") && admin) {
+            out.add("reset");
         } else if (args.length == 2 && args[0].equalsIgnoreCase("amounts")) {
             out.addAll(List.of("add", "remove", "set"));
         }

@@ -44,6 +44,15 @@ public final class HorseRacePlugin extends JavaPlugin {
     private int estimateSamples = 5000;
     /** 말 순서와 같은 인덱스의 추정 승률(0~1). 설정/배당이 바뀔 때 다시 계산. */
     private double[] winChances = new double[0];
+
+    // ---- 실제 경기 통계 (stats.yml) ----
+    /** 실제 통계를 승률로 쓰기 시작하는 최소 경기 수. 그 전엔 시뮬레이션 예상값. */
+    private int statsMinRaces = 30;
+    private int statsTotalRaces = 0;
+    /** 말 이름 → 실제 우승 횟수 */
+    private final Map<String, Integer> statsWins = new HashMap<>();
+    /** 통계가 유효한 규칙(배당·이동 확률·이동 거리·트랙)의 서명. 바뀌면 통계 초기화. */
+    private String statsSignature = "";
     private long tickInterval = 32;
     private double trackLength = 100;
 
@@ -55,6 +64,7 @@ public final class HorseRacePlugin extends JavaPlugin {
         saveDefaultConfig();
         readConfig();
         loadPending();
+        loadStats();
 
         this.raceManager = new RaceManager(this);
         getServer().getPluginManager().registerEvents(new GuiListener(this), this);
@@ -76,6 +86,7 @@ public final class HorseRacePlugin extends JavaPlugin {
             raceManager.shutdownRefundAll();
         }
         savePending();
+        saveStats();
     }
 
     public void readConfig() {
@@ -113,6 +124,7 @@ public final class HorseRacePlugin extends JavaPlugin {
         this.movePower = Math.max(0.1, Math.min(10.0, getConfig().getDouble("race.move-chance-power", 0.5)));
         this.moveStep = Math.max(0.01, Math.min(1.0, getConfig().getDouble("race.move-step", 0.16)));
         this.estimateSamples = Math.max(500, Math.min(100000, getConfig().getInt("race.estimate-samples", 5000)));
+        this.statsMinRaces = Math.max(1, getConfig().getInt("race.stats-min-races", 30));
         this.tickInterval = Math.max(1, getConfig().getInt("race.tick-interval-ticks", 32));
         this.trackLength = Math.max(10, getConfig().getDouble("race.track-length", 100));
 
@@ -150,9 +162,106 @@ public final class HorseRacePlugin extends JavaPlugin {
         recomputeWinChances();
     }
 
-    /** 현재 말 목록과 규칙으로 승률을 시뮬레이션해 캐시한다. */
+    /** 현재 말 목록과 규칙으로 승률을 시뮬레이션해 캐시한다. 규칙이 바뀌었으면 실제 통계도 초기화. */
     private void recomputeWinChances() {
         this.winChances = Race.estimateWinChances(horses, trackLength, movePower, moveStep, estimateSamples);
+        String sig = ruleSignature();
+        if (statsSignature.isEmpty()) {
+            // 최초 기동: 아직 stats.yml 을 읽기 전이라 서명만 기억하고 loadStats() 에 맡긴다.
+            statsSignature = sig;
+            return;
+        }
+        if (!sig.equals(statsSignature)) {
+            if (statsTotalRaces > 0) {
+                getLogger().info("배당/규칙이 바뀌어 실제 승률 통계를 초기화합니다. (이전 " + statsTotalRaces + "경기)");
+            }
+            statsWins.clear();
+            statsTotalRaces = 0;
+            statsSignature = sig;
+            saveStats();
+        }
+    }
+
+    private String ruleSignature() {
+        StringBuilder sb = new StringBuilder();
+        for (Horse h : horses) {
+            sb.append(h.name()).append('=').append(h.odds()).append(';');
+        }
+        sb.append("p=").append(movePower).append(";s=").append(moveStep).append(";t=").append(trackLength);
+        return sb.toString();
+    }
+
+    // ---- 실제 통계 ----
+
+    private File statsFile() {
+        return new File(getDataFolder(), "stats.yml");
+    }
+
+    private void loadStats() {
+        statsWins.clear();
+        statsTotalRaces = 0;
+        File file = statsFile();
+        if (file.exists()) {
+            YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+            String sig = yaml.getString("signature", "");
+            if (sig.equals(ruleSignature())) {
+                statsTotalRaces = yaml.getInt("total", 0);
+                var section = yaml.getConfigurationSection("wins");
+                if (section != null) {
+                    for (String key : section.getKeys(false)) {
+                        statsWins.put(key, section.getInt(key));
+                    }
+                }
+            } else {
+                getLogger().info("stats.yml 이 현재 배당/규칙과 달라 실제 승률 통계를 새로 시작합니다.");
+            }
+        }
+        statsSignature = ruleSignature();
+        saveStats();
+    }
+
+    public void saveStats() {
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("signature", statsSignature);
+        yaml.set("total", statsTotalRaces);
+        for (Horse h : horses) {
+            yaml.set("wins." + h.name(), statsWins.getOrDefault(h.name(), 0));
+        }
+        try {
+            yaml.save(statsFile());
+        } catch (IOException e) {
+            getLogger().warning("stats.yml 저장 실패: " + e.getMessage());
+        }
+    }
+
+    /** 경기가 끝날 때 호출. 우승마를 집계하고 저장한다. */
+    public void recordResult(Horse winner) {
+        statsTotalRaces++;
+        statsWins.merge(winner.name(), 1, Integer::sum);
+        saveStats();
+    }
+
+    public void resetStats() {
+        statsWins.clear();
+        statsTotalRaces = 0;
+        saveStats();
+    }
+
+    public int statsTotalRaces() {
+        return statsTotalRaces;
+    }
+
+    public int statsWins(Horse h) {
+        return statsWins.getOrDefault(h.name(), 0);
+    }
+
+    /** 실제 통계를 승률로 쓰는 중이면 true (최소 경기 수 충족). */
+    public boolean usingRealStats() {
+        return statsTotalRaces >= statsMinRaces;
+    }
+
+    public int statsMinRaces() {
+        return statsMinRaces;
     }
 
     private ItemCurrency buildItemCurrency(String display) {
@@ -295,8 +404,19 @@ public final class HorseRacePlugin extends JavaPlugin {
         return moveStep;
     }
 
-    /** 표시용 승률(0~1): 시뮬레이션으로 추정한 전체 말 중 이 말의 우승 비율. 전부 더하면 1. */
+    /**
+     * 표시용 승률(0~1). 실제 경기가 stats-min-races 이상 쌓였으면 실제 우승 비율,
+     * 아니면 시뮬레이션 예상값. 전부 더하면 1.
+     */
     public double winChance(Horse h) {
+        if (usingRealStats()) {
+            return (double) statsWins(h) / statsTotalRaces;
+        }
+        return estimatedWinChance(h);
+    }
+
+    /** 시뮬레이션 예상 승률(0~1). */
+    public double estimatedWinChance(Horse h) {
         int index = horses.indexOf(h);
         if (index < 0 || index >= winChances.length) {
             return 0;

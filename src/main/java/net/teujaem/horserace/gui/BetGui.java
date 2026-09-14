@@ -54,7 +54,7 @@ public final class BetGui implements InventoryHolder {
             inventory.setItem(slots[i], Items.named(h.material(),
                     "&f" + (i + 1) + "번 " + h.coloredName(),
                     "&7배당: &e" + h.oddsText(),
-                    "&7승률: &f약 " + plugin.winChancePercent(h) + "% &8(전체 말 중)",
+                    "&7승률: &f약 " + plugin.winChancePercent(h) + "% &8" + statsNote(),
                     "&7이동 확률: &f" + (int) Math.round(plugin.moveChance(h) * 100) + "% &8(틱마다)",
                     "",
                     "&e클릭해서 이 말에 베팅"));
@@ -62,6 +62,13 @@ public final class BetGui implements InventoryHolder {
         }
         inventory.setItem(SLOT_INFO, Items.named(Material.PAPER, "&b내 잔액",
                 "&f" + plugin.getCurrency().balance(player) + " " + cur));
+    }
+
+    private String statsNote() {
+        if (plugin.usingRealStats()) {
+            return "(실제 " + plugin.statsTotalRaces() + "경기 기준)";
+        }
+        return "(예상, " + plugin.statsTotalRaces() + "/" + plugin.statsMinRaces() + "경기)";
     }
 
     /** 슬롯에 해당하는 말 번호. 없으면 -1. */

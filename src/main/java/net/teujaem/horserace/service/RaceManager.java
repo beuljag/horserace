@@ -116,6 +116,7 @@ public final class RaceManager {
         Runner winner = race.winner();
         String cur = Text.strip(plugin.getCurrency().display());
         int payout = race.won() ? race.bet().payout() : 0;
+        plugin.recordResult(winner.horse());
 
         if (race.won()) {
             if (player.isOnline()) {

@@ -40,7 +40,6 @@ public final class HorseRacePlugin extends JavaPlugin {
     private List<Integer> betAmounts = new ArrayList<>();
     private List<Horse> horses = new ArrayList<>();
     private double oddsPower = 2.0;
-    private double hiddenPenalty = 0.05;
     private long tickInterval = 8;
     private double trackLength = 100;
 
@@ -108,7 +107,6 @@ public final class HorseRacePlugin extends JavaPlugin {
 
         // 경기 규칙
         this.oddsPower = Math.max(0.1, Math.min(10.0, getConfig().getDouble("race.odds-power", 2.0)));
-        this.hiddenPenalty = Math.max(0.0, Math.min(0.9, getConfig().getDouble("race.hidden-win-penalty", 0.05)));
         this.tickInterval = Math.max(1, getConfig().getInt("race.tick-interval-ticks", 8));
         this.trackLength = Math.max(10, getConfig().getDouble("race.track-length", 100));
 
@@ -298,11 +296,6 @@ public final class HorseRacePlugin extends JavaPlugin {
     public double fairOdds(Horse h) {
         double p = winChance(h);
         return p <= 0 ? 0 : 1.0 / p;
-    }
-
-    /** 실제 판정에만 적용되고 표시 승률에는 안 나타나는 감소 비율. */
-    public double getHiddenPenalty() {
-        return hiddenPenalty;
     }
 
     public long getTickInterval() {

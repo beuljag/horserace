@@ -10,8 +10,7 @@ import java.util.Random;
  *
  * <p><b>승패 결정</b>: 말마다 가중치 = (1 / 배당)^oddsPower 를 갖고, 매 경기 그 비율대로 우승마가 뽑힌다.
  * 베팅과 무관하게 항상 같은 확률이며, 배당이 높을수록 거듭제곱으로 가파르게 떨어진다.
- * 실제 판정에서는 베팅한 말의 가중치에만 (1 - hiddenPenalty) 를 곱해 살짝 불리하게 한다
- * (표시 승률에는 반영 안 됨). 즉 내가 건 말이 더 잘 도착하는 일은 없다.
+ * 표시되는 승률이 곧 실제 판정 확률이다. 어떤 말에 걸었는지는 결과에 전혀 영향을 주지 않는다.
  *
  * <p><b>연출</b>: 우승마는 미리 정해져 있고, {@link #tick()} 은 랜덤 변동이 있는 레이스를
  * 그리되 다른 말이 우승마보다 먼저 결승선을 넘지 못하게 선 앞에서 붙잡는다.
@@ -26,10 +25,10 @@ public final class Race {
     private final double trackLength;
     private boolean finished = false;
 
-    public Race(List<Horse> field, Bet bet, double trackLength, double oddsPower, double hiddenPenalty) {
+    public Race(List<Horse> field, Bet bet, double trackLength, double oddsPower) {
         this.bet = bet;
         this.trackLength = trackLength;
-        this.winnerIndex = decideWinner(field, bet.runnerIndex(), oddsPower, hiddenPenalty);
+        this.winnerIndex = decideWinner(field, oddsPower);
 
         this.runners = new ArrayList<>();
         for (int i = 0; i < field.size(); i++) {
@@ -58,15 +57,12 @@ public final class Race {
         return total <= 0 ? 0 : weight(field.get(index), oddsPower) / total;
     }
 
-    private static int decideWinner(List<Horse> field, int betIndex, double oddsPower, double hiddenPenalty) {
-        // 모든 말이 자기 가중치대로 경쟁. 베팅한 말만 (1 - hiddenPenalty) 를 곱해 살짝 불리하게.
+    private static int decideWinner(List<Horse> field, double oddsPower) {
+        // 모든 말이 자기 가중치대로 경쟁. 베팅 여부는 무관.
         double[] w = new double[field.size()];
         double total = 0;
         for (int i = 0; i < field.size(); i++) {
             w[i] = weight(field.get(i), oddsPower);
-            if (i == betIndex) {
-                w[i] *= (1.0 - hiddenPenalty);
-            }
             total += w[i];
         }
         double roll = RANDOM.nextDouble() * total;

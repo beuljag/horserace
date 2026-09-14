@@ -1,0 +1,65 @@
+plugins {
+    id 'java'
+    id 'xyz.jpenilla.run-paper' version '2.3.1'
+}
+
+group = 'net.teujaem'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'papermc-repo'
+        url = 'https://repo.papermc.io/repository/maven-public/'
+    }
+    // VaultAPI 배포처
+    maven { url = 'https://jitpack.io' }
+}
+
+dependencies {
+    // 서버 버전: 26.1.2 (팀 확정). 랜덤박스와 동일한 Paper 아티팩트를 쓴다.
+    compileOnly 'io.papermc.paper:paper-api:26.1.2.build.74-stable'
+    // 블랙잭은 DB 가 필요 없어서 SP-Framework 에 의존하지 않는다. 단독으로 뜬다.
+
+    // Vault 이코노미 연동(선택). softdepend 이므로 없으면 아이템 화폐로 폴백.
+    compileOnly 'com.github.MilkBowl:VaultAPI:1.7.1'
+}
+
+// OneDrive 폴더 안에서 build/ 잠금 문제가 나면 출력 위치를 밖으로 뺀다.
+//   gradlew build -PoutDir=C:/temp/horserace-build
+if (project.hasProperty('outDir')) {
+    layout.buildDirectory = file(project.property('outDir'))
+}
+
+// 서버(26.1.2)가 Java 25 위에서 돌기 때문에 여기도 25 로 맞춘다.
+def targetJavaVersion = 25
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xlint:deprecation'
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release.set(targetJavaVersion)
+    }
+}
+
+processResources {
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}
+
+tasks {
+    runServer {
+        minecraftVersion('26.1.2')
+        //   gradlew runServer -PrunDir=C:/temp/bjtest-server
+        if (project.hasProperty('runDir')) {
+            runDirectory = file(project.property('runDir'))
+        }
+    }
+}

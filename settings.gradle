@@ -1,0 +1,7 @@
+// Paper 26.1.2 는 Java 25 이상을 요구한다.
+// 이 PC 에 JDK 25 가 없어도 Gradle 이 알아서 받아오도록 toolchain resolver 를 붙인다.
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
+rootProject.name = 'horserace'

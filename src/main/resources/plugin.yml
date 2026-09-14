@@ -1,0 +1,21 @@
+name: HorseRace
+version: '${version}'
+main: net.teujaem.horserace.HorseRacePlugin
+api-version: '26.1'
+authors: [teujaem]
+description: 1인용 경마 도박. 말을 고르고 베팅하면 바로 GUI 경기장에서 레이스가 펼쳐진다. 말마다 배당이 다르고 배당이 높을수록 잘 안 이긴다.
+softdepend: [Vault]
+
+commands:
+  horserace:
+    description: 경마 베팅/관전/관리
+    aliases: [hr, horse, 경마]
+    usage: /hr help
+
+permissions:
+  horserace.admin:
+    description: 경기 개최/중지, 설정 리로드
+    default: op
+  horserace.play:
+    description: 경마 베팅 및 관전
+    default: true

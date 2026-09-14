@@ -1,0 +1,19 @@
+# Gradle
+.gradle/
+build/
+dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 빌드 산출물
+*.class
+
+# 내부 작업 문서 (팀 내부 내용 포함)
+PROGRESS.md
